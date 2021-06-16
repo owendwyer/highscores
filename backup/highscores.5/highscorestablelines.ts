@@ -1,25 +1,37 @@
 import PIXI from 'pixi.js';
 import gsap from 'gsap';
+import {DisplayVars, HSSettings, HSDisplaySettings, HSScoresLine} from './highscorestypes';
 
 const	MONTH_TEXTS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const LINE_HEI = 38;
 const PANE_WID = 496;
 const PANE_RND = 8;
-const NUM_ROWS = 8;
+const NUM_ROWS = 6;
 const FIELDS_X = -226;
 
 class HighScoresTableLines extends PIXI.Container {
-	constructor(displayVars, dSettings) {
+	private lineType:string;
+	private playerHighlight:PIXI.Graphics;
+	private fieldsMask:PIXI.Graphics;
+	private fieldsContainer:PIXI.Container;
+	private linesTween:GSAPTween|null=null;
+	private columns:number;
+	private tFields:PIXI.Text[];
+	private tFieldsText:string[];
+	private baseY:number=0;
+	private minY:number=0;
+	private rowsCount:number=0;
+
+	constructor(dVars:DisplayVars, settings:HSSettings, dStngs:HSDisplaySettings) {
 		super();
-		this.lineEntries = dSettings.LINE_ENTRIES;
+		this.lineType=settings.TABLE_TYPE;
+
 		this.playerHighlight = new PIXI.Graphics();
 
-		this.linesTween = null;
-
-		this.playerHighlight.lineStyle(1, dSettings.highlightColors[0]);
-		this.playerHighlight.beginFill(dSettings.highlightColors[1]);
+		this.playerHighlight.lineStyle(1, dStngs.highlightColors[0]);
+		this.playerHighlight.beginFill(dStngs.highlightColors[1]);
 		this.playerHighlight.drawRoundedRect(-20, -6, PANE_WID, LINE_HEI - 3, PANE_RND);
-		this.playerHighlight.alpha = dSettings.highlightAlpha;
+		this.playerHighlight.alpha = dStngs.highlightAlpha;
 		this.playerHighlight.visible = false;
 
 		this.fieldsContainer = new PIXI.Container();
@@ -28,42 +40,43 @@ class HighScoresTableLines extends PIXI.Container {
 		this.fieldsContainer.mask = this.fieldsMask;
 		this.fieldsContainer.addChild(this.playerHighlight);
 
-		this.columns = dSettings.X_POS.length;
+		this.columns = dStngs.xPositions.length;
 		this.tFields = [];
 		this.tFieldsText = [];
 		for (let i = 0; i < this.columns; i++) {
 			this.tFields[i] = new PIXI.Text('', {
-				fontFamily: dSettings.fonts[2],
-				fill: dSettings.fontColors[2],
+				fontFamily: dStngs.fonts[2],
+				fill: dStngs.fontColors[2],
 				lineHeight: LINE_HEI,
 				align: 'center',
 				fontWeight: 'bold'
 			});
 
 			this.fieldsContainer.addChild(this.tFields[i]);
-			this.tFields[i].x = dSettings.X_POS[i];
+			this.tFields[i].x = dStngs.xPositions[i];
 			this.tFieldsText[i] = '';
 			this.tFields[i].anchor.set(0.5, 0);
 		}
 		this.addChild(this.fieldsContainer, this.fieldsMask);
-		this.setupDisplay(displayVars, dSettings);
+		this.setupDisplay(dVars, dStngs);
 	}
 
-	setupDisplay(displayVars, dSettings) {
+	setupDisplay(dVars:DisplayVars, dStngs:HSDisplaySettings) {
 		this.fieldsMask.clear();
 		this.fieldsMask.beginFill(0xffffff);
-		this.fieldsMask.drawRect(-248, -8, 500, 306);
+		this.fieldsMask.drawRect(-248, -8, 500, 230);
+		// this.fieldsMask.drawRect(-248, -8, 500, 306);
 		this.baseY = 0;
 		this.fieldsContainer.position.set(FIELDS_X, this.baseY);
 		this.setMinY();
-		this.updateFontSizes(displayVars, dSettings);
+		this.updateFontSizes(dVars, dStngs);
 		for (let i = 0; i < this.columns; i++) {
-			this.tFields[i].resolution = displayVars.textRes;
+			this.tFields[i].resolution = dVars.textRes;
 		}
 	}
 
-	updateFontSizes(displayVars, dSettings) {
-		let fontSizes = displayVars.orient === 0 ? dSettings.fontSizes : dSettings.fontSizesPort;
+	updateFontSizes(dVars:DisplayVars, dStngs:HSDisplaySettings) {
+		let fontSizes = dVars.orient === 0 ? dStngs.fontSizes : dStngs.fontSizesPort;
 		for (let i = 0; i < this.columns; i++) {
 			this.tFields[i].style.fontSize = fontSizes[2];
 		}
@@ -73,7 +86,7 @@ class HighScoresTableLines extends PIXI.Container {
 		return this.fieldsContainer.y - this.baseY;
 	}
 
-	showPlayerHighlight(pPos) {
+	showPlayerHighlight(pPos:number) {
 		this.playerHighlight.visible = true;
 		this.playerHighlight.y = LINE_HEI * pPos;
 		let off = pPos;
@@ -84,37 +97,42 @@ class HighScoresTableLines extends PIXI.Container {
 		if (this.fieldsContainer.y <= this.minY) this.fieldsContainer.y = this.minY;
 	}
 
-	showLastYPosition(yOff) {
+	showLastYPosition(yOff:number) {
 		this.playerHighlight.visible = false;
 		this.fieldsContainer.y = this.baseY + yOff;
 	}
 
-	showScores(sJson, dir, curSet) {
-		this.displayScores(sJson, curSet);
+	showScores(scoresSet:HSScoresLine[], dir:number, curSet:number) {
+		this.displayScores(scoresSet, curSet);
 		this.setMinY();
 		this.fieldsContainer.x = FIELDS_X + (20 * dir);
 		this.fieldsContainer.alpha = 0;
 		this.linesTween = gsap.to([this.fieldsContainer], { duration: 0.4, alpha: 1, x: FIELDS_X });
 	}
 
-	displayScores(sJson, curSet) {
+	displayScores(scoresSet:HSScoresLine[], curSet:number) {
 		for (let i = 0; i < this.tFields.length; i++) this.tFieldsText[i] = '';
-		this.rowsCount = sJson.length;
-		for (let i = 0; i < this.rowsCount; i++) {
-			let dateLine = '';
-			if (curSet !== 0) {
-				let myDate = new Date(sJson[i].dote);
-				let myMon = MONTH_TEXTS[myDate.getMonth()];
-				let myDay = myDate.getDate();
-				dateLine = myDay + '-' + myMon;
-				if (curSet === 1)dateLine = myDate.getFullYear();
-			} else {
-				dateLine = sJson[i].dote;
+		this.rowsCount = scoresSet.length;
+		if(this.lineType==='score'){
+			for (let i = 0; i < this.rowsCount; i++) {
+				let dateLine=this.getDateLine(scoresSet[i].dote,curSet);
+				this.addScoreLine(i + 1, scoresSet[i], dateLine);
 			}
-			this.addLineFun(i + 1, sJson[i], dateLine);
 		}
 		for (let i = 0; i < this.tFields.length; i++) {
 			this.tFields[i].text = this.tFieldsText[i];
+		}
+	}
+
+	getDateLine(date:string,curSet:number){
+		if (curSet !== 0) {
+			let myDate = new Date(date);
+			if (curSet === 1)return myDate.getFullYear().toString();
+			let myMon = MONTH_TEXTS[myDate.getMonth()];
+			let myDay = myDate.getDate();
+			return myDay + '-' + myMon;
+		} else {
+			return date;
 		}
 	}
 
@@ -122,7 +140,7 @@ class HighScoresTableLines extends PIXI.Container {
 		if (this.rowsCount <= NUM_ROWS) {
 			this.minY = this.baseY;
 		} else {
-			this.minY = this.baseY - ((this.rowsCount - 8) * LINE_HEI);
+			this.minY = this.baseY - ((this.rowsCount - NUM_ROWS) * LINE_HEI);
 		}
 	}
 
@@ -148,12 +166,12 @@ class HighScoresTableLines extends PIXI.Container {
 	deit() {
 	}
 
-	addLineFun(ind, scoreEntry, dateLine) {
+	addScoreLine(ind:number, scoreEntry:HSScoresLine, dateLine:string) {
 		this.tFieldsText[0] += ind + '\r\n';
-		for (let i = 1; i < this.lineEntries.length; i++) {
-			if (this.lineEntries[i] === 'date') this.tFieldsText[i] += dateLine + '\r\n';
-			else this.tFieldsText[i] += scoreEntry[this.lineEntries[i]] + '\r\n';
-		}
+		this.tFieldsText[1] += scoreEntry.nom + '\r\n';
+		this.tFieldsText[2] += scoreEntry.score + '\r\n';
+		this.tFieldsText[3] += dateLine + '\r\n';
+		this.tFieldsText[4] += scoreEntry.local + '\r\n';
 	}
 }
 

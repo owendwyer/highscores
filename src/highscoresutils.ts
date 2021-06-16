@@ -1,7 +1,9 @@
+
+import PIXI from 'pixi.js';
 //this utils duplicates some functions in general/utils
 //this is to keep the highscores stuff encapsulated and as indepdent from rest of code
 
-function makeArrow(g, size, s, f) {
+function makeArrow(g:PIXI.Graphics, size:number, s:number, f:number) {
 	g.clear();
 	g.beginFill(f);
 	g.lineStyle(1, s);
@@ -11,14 +13,14 @@ function makeArrow(g, size, s, f) {
 	g.closePath();
 }
 
-function makeRect(g, w, h, r, s, f) {
+function makeRect(g:PIXI.Graphics, w:number, h:number, r:number, s:number, f:number) {
 	g.clear();
 	g.beginFill(f);
 	g.lineStyle(1, s);
 	g.drawRoundedRect(-w / 2, -h / 2, w, h, r);
 }
 
-function makeRectWithBorder(g, w, h, r, r2, m, c0, c1, c2, c3) {
+function makeRectWithBorder(g:PIXI.Graphics, w:number, h:number, r:number, r2:number, m:number, c0:number, c1:number, c2:number, c3:number) {
 	g.clear();
 	g.lineStyle(1, c0);
 	g.beginFill(c1);
@@ -30,7 +32,7 @@ function makeRectWithBorder(g, w, h, r, r2, m, c0, c1, c2, c3) {
 	g.drawRoundedRect(-w / 2, -h / 2, w, h, r2);
 }
 
-function capitalizeFirst(inText) {
+function capitalizeFirst(inText:string) {
 	return inText.charAt(0).toUpperCase() + inText.slice(1);
 }
 

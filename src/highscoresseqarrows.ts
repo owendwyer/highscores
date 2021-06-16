@@ -1,8 +1,11 @@
 import PIXI from 'pixi.js';
 import { makeRect } from './highscoresutils';
+import { HSDisplaySettings} from './highscorestypes';
 
 class HighScoresSeqArrows extends PIXI.Container {
-	constructor(displaySettings) {
+	private rArrow:PIXI.Container;
+	private lArrow:PIXI.Container;
+	constructor(dSettings:HSDisplaySettings) {
 		super();
 
 		this.carouselClick = this.carouselClick.bind(this);
@@ -20,17 +23,15 @@ class HighScoresSeqArrows extends PIXI.Container {
 		this.rArrow.addChild(rRect);
 		this.lArrow.addChild(lRect);
 
-		let rArr = this.drawArrow(12, '0xbbbbbb');
-		let lArr = this.drawArrow(12, '0xbbbbbb');
+		let rArr = this.drawArrow(12, dSettings.arrowColor);
+		let lArr = this.drawArrow(12, dSettings.arrowColor);
 		lArr.rotation = Math.PI;
-		this.rArrow.dir = 'next';
-		this.lArrow.dir = 'prev';
 
 		this.rArrow.addChild(rArr);
 		this.lArrow.addChild(lArr);
 
-		this.rArrow.x = displaySettings.seqArrowsWidth / 2;
-		this.lArrow.x = -displaySettings.seqArrowsWidth / 2;
+		this.rArrow.x = dSettings.seqArrowsWidth / 2;
+		this.lArrow.x = -dSettings.seqArrowsWidth / 2;
 
 		this.addChild(this.rArrow, this.lArrow);
 	}
@@ -45,8 +46,8 @@ class HighScoresSeqArrows extends PIXI.Container {
 		this.lArrow.visible = true;
 	}
 
-	carouselClick(e) {
-		if (e.currentTarget.dir === 'next') {
+	carouselClick(e:PIXI.InteractionEvent) {
+		if (e.currentTarget === this.rArrow) {
 			this.emit('seqnext');
 		} else {
 			this.emit('seqprev');
@@ -54,8 +55,8 @@ class HighScoresSeqArrows extends PIXI.Container {
 	}
 
 	addLists() {
-		this.rArrow.on('pointerup', this.carouselClick);
-		this.lArrow.on('pointerup', this.carouselClick);
+		this.rArrow.on('pointertap', this.carouselClick);
+		this.lArrow.on('pointertap', this.carouselClick);
 		this.rArrow.buttonMode = true;
 		this.lArrow.buttonMode = true;
 		this.rArrow.interactive = true;
@@ -63,18 +64,18 @@ class HighScoresSeqArrows extends PIXI.Container {
 	}
 
 	removeLists() {
-		this.rArrow.off('pointerup');
-		this.lArrow.off('pointerup');
+		this.rArrow.off('pointertap');
+		this.lArrow.off('pointertap');
 		this.rArrow.buttonMode = false;
 		this.lArrow.buttonMode = false;
 		this.rArrow.interactive = false;
 		this.lArrow.interactive = false;
 	}
 
-	drawArrow(size, color) {
+	drawArrow(size:number, color:number) {
 		let outShape = new PIXI.Graphics();
 		outShape.beginFill(color);
-		outShape.lineStyle(1, 0x888888);
+		outShape.lineStyle(1, 0x999999);
 		outShape.arc(0, 0, size * 0.56, -1, 1);
 		outShape.arc(-size, size, size * 0.40, 1, Math.PI);
 		outShape.arc(-size, -size, size * 0.40, Math.PI, -1);

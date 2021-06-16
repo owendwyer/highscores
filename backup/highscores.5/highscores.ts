@@ -1,9 +1,34 @@
 import PIXI from 'pixi.js';
 import HighScoresView from './highscoresview';
 import HighScoresLoader from './highscoresloader';
+import {DisplayVars, HSSettings, HSDisplaySettings, HSScoresLine, HSObject} from './highscorestypes';
+
+export interface GameData{
+	score: number,
+	time: number,
+	moves: number,
+	contentCode: number|null,
+	contentTitle: string,
+	playerName: string,
+	playerLocation: string,
+	maxScore: number
+}
+
+interface responseType{
+	response:HSScoresLine[],
+	userInsert:number
+}
+
+const OFFLINE_LEN:number=6;
 
 class HighScores extends PIXI.Container {
-	constructor(displayVars, scores, settings, displaySettings) {
+	private scores:HSObject;
+	private settings:HSSettings;
+	private gameData:GameData;
+	private highScoresView:HighScoresView;
+	private highScoresLoader:HighScoresLoader;
+
+	constructor(dVars:DisplayVars, scores:HSObject, settings:HSSettings, dSettings:HSDisplaySettings) {
 		super();
 		this.submitClick = this.submitClick.bind(this);
 		this.gotScores = this.gotScores.bind(this);
@@ -12,18 +37,18 @@ class HighScores extends PIXI.Container {
 		this.gameData = {
 			score: 0, time: 0, moves: 0, contentCode: null, contentTitle: '', playerName: 'You', playerLocation: 'Home', maxScore: 0
 		};
-		this.highScoresView = new HighScoresView(displayVars, scores, settings, displaySettings);
+		this.highScoresView = new HighScoresView(dVars, scores, settings, dSettings);
 		this.highScoresLoader = new HighScoresLoader(settings);
 		this.highScoresLoader.on('gotscores', this.gotScores);
 		this.addChild(this.highScoresView);
 	}
 
-	displayChange(displayVars) {
-		this.highScoresView.displayChange(displayVars);
+	displayChange(dVars:DisplayVars) {
+		this.highScoresView.displayChange(dVars);
 	}
 
-	updateInputs(displayVars) {
-		this.highScoresView.updateInputs(displayVars);
+	updateInputs(dVars:DisplayVars) {
+		this.highScoresView.updateInputs(dVars);
 	}
 
 	getScores() {
@@ -31,7 +56,7 @@ class HighScores extends PIXI.Container {
 		this.highScoresLoader.getScores(false, this.gameData);
 	}
 
-	gotScores(responseText) {
+	gotScores(responseText:responseType) {
 		this.processJson(responseText);
 		let dSeq = this.getDisplaySeq();
 		if (this.highScoresView.isSubmitSent()) this.ensurePlayerShowing(dSeq);
@@ -39,19 +64,24 @@ class HighScores extends PIXI.Container {
 		this.highScoresView.gotScores();
 	}
 
-	setPlayerScores(score1, score2) {
-		this.gameData[this.settings.SCORE_TYPE[0]] = score1;
-		this.gameData[this.settings.SCORE_TYPE[1]] = score2;
+	setPlayerScores(score1:number, score2:number) {
+		if(this.settings.SCORE_TYPE[0]==='score')this.gameData.score=score1;
+		if(this.settings.SCORE_TYPE[0]==='time')this.gameData.time=score1;
+		if(this.settings.SCORE_TYPE[0]==='moves')this.gameData.moves=score1;
+		if(this.settings.SCORE_TYPE.length>1){
+			if(this.settings.SCORE_TYPE[1]==='score')this.gameData.score=score2;
+			if(this.settings.SCORE_TYPE[1]==='time')this.gameData.time=score2;
+			if(this.settings.SCORE_TYPE[1]==='moves')this.gameData.moves=score2;
+		}
 		this.highScoresView.setScoresPane(this.settings.SCORE_TYPE[0], score1);
 		this.addPlayerToOfflineScores();
 	}
 
-	setGameData(data) {
-		let keys = Object.keys(data);
-		for (let i = 0; i < keys.length; i++) {
-			this.gameData[keys[i]] = data[keys[i]];
-			if (keys[i] === 'contentTitle') this.highScoresView.setContentTitle(data[keys[i]]);
-		}
+	setGameData(contentCode:number, contentTitle:string, maxScore:number) {
+		this.gameData.contentCode=contentCode;
+		this.gameData.contentTitle=contentTitle;
+		this.gameData.maxScore=maxScore;
+		this.highScoresView.setContentTitle(contentTitle);
 	}
 
 	getDisplaySeq() { //determines which sets of scores to display - all, monthly, weekly or 24hrs
@@ -61,18 +91,18 @@ class HighScores extends PIXI.Container {
 		return [1, 2];//all & monthly
 	}
 
-	submitClick(nom, loc) {
+	submitClick(nom:string, loc:string) {
 		this.gameData.playerName = nom;
 		this.gameData.playerLocation = loc;
 		this.highScoresLoader.getScores(true, this.gameData);
 	}
 
-	processJson(responseText) {
+	processJson(responseText:responseType) {
 		let myJson = responseText.response;
 		let userId = responseText.userInsert;
 		let lim = 50;
 		let times = [0, 0, 0, 0, 0];
-		let pPos = [null, null, null, null, null];
+		let pPos = [-1, -1, -1, -1, -1];
 
 		let now = new Date();
 		now.setDate(now.getDate() - 1);
@@ -100,45 +130,64 @@ class HighScores extends PIXI.Container {
 	}
 
 	addPlayerToOfflineScores() {
-		this.scores[0][7] = this.makePlayerLine(false);
+		this.scores[0][OFFLINE_LEN-1] = this.makePlayerLine(false);
 		this.scores[0].sort(this.compare.bind(this));
 		let pPos = this.scores[0].map((e) => e.nom).indexOf('You');
 		this.highScoresView.setPlayerPosition(0, pPos);
 	}
 
-	ensurePlayerShowing(dSeq) {
+	ensurePlayerShowing(dSeq:number[]) {
 		let sInd = dSeq[dSeq.length - 1];
-		if (this.highScoresView.getPlayerPosition(sInd) === null) {
+		if (this.highScoresView.getPlayerPosition(sInd) === -1) {
 			this.scores[sInd][49] = this.makePlayerLine(true);
 			this.highScoresView.setPlayerPosition(sInd, 49);
 		}
 	}
 
-	makePlayerLine(fullYear) {
+	makePlayerLine(fullYear:boolean) {
 		let myDate = new Date();
-		let line = {};
-		line.dote = fullYear ? myDate : myDate.getFullYear();
-		line.nom = this.gameData.playerName;
-		line.local = this.gameData.playerLocation;
-		//check this
-		let sType = this.settings.SCORE_TYPE;
-		line[sType[0]] = this.gameData[sType[0]];
-		if (sType.length > 1) line[sType[1]] = this.gameData[sType[1]];
+		let playerDate = fullYear ? myDate : myDate.getFullYear();
+		let line:HSScoresLine = {
+			dote : playerDate.toString(),
+			nom : this.gameData.playerName,
+			local : this.gameData.playerLocation,
+			id:7,
+			score : this.gameData.score,
+			time : this.gameData.time,
+			moves : this.gameData.moves
+		};
 		return line;
 	}
 
-	compare(a, b) {
-		let ret = [1, -1];//descending
+	compare(a:HSScoresLine, b:HSScoresLine) {
+		//this is only used when adding player score
 		let sType = this.settings.SCORE_TYPE[0];
-		if (sType === 'score')ret = [-1, 1];//ascending
-		if (a[sType] > b[sType]) return ret[0];
-		if (a[sType] < b[sType]) return ret[1];
+		if(sType==='score'){
+			if(a.score>b.score)return -1;
+			if(a.score<b.score)return 1;
+		}
+		if(sType==='time'){
+			if(a.time>b.time)return 1;
+			if(a.time<b.time)return -1;
+		}
+		if(sType==='moves'){
+			if(a.moves>b.moves)return 1;
+			if(a.moves<b.moves)return -1;
+		}
 		if (this.settings.SCORE_TYPE.length > 1) {
-			ret = [1, -1];
 			sType = this.settings.SCORE_TYPE[1];
-			if (sType === 'score')ret = [-1, 1];
-			if (a[sType] > b[sType]) return ret[0];
-			if (a[sType] < b[sType])	return ret[1];
+			if(sType==='score'){
+				if(a.score>b.score)return -1;
+				if(a.score<b.score)return 1;
+			}
+			if(sType==='time'){
+				if(a.time>b.time)return 1;
+				if(a.time<b.time)return -1;
+			}
+			if(sType==='moves'){
+				if(a.moves>b.moves)return 1;
+				if(a.moves<b.moves)return -1;
+			}
 		}
 		return 0;
 	}

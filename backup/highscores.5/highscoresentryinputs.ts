@@ -1,39 +1,52 @@
 import PIXI from 'pixi.js';
 import gsap from 'gsap';
+import { DisplayVars,HSDisplaySettings} from './highscorestypes';
 
 const SWEARS_LIST = ['fuck', 'shit', 'dick', 'suck', 'cock', 'twat', 'gun', 'shoot', 'kill',
 	'fock', 'bitch', 'penis', 'arse', 'nigger', 'vagina', 'cunt'];
 const CANVAS_ID = 'myCanvas';//this is defined in display.js
+const BORDER_STYLES=['1px solid #bbbbbb', '1px solid #ffdd00'];
 
 class HighScoresEntryInputs extends PIXI.Container {
-	constructor(displayVars, dStngs) {
+	private myScale:number;
+	private entryMaxLength:number;
+	private offsetX:number = 0;
+	private offsetY:number = 0;
+	private fieldTween1:GSAPTween|null=null;
+	private fieldTween2:GSAPTween|null=null;
+	private nDiv:HTMLInputElement;
+	private lDiv:HTMLInputElement;
+
+	private nameElemX:number = 0;
+	private nameElemY:number = -22;
+	private localElemX:number = 0;
+	private localElemY:number = 45;
+	private fieldWidth:number = 84;
+	private fieldHeight:number = 18;
+	private fontSizes:number[] =[];
+
+	constructor(dVars:DisplayVars, dStngs:HSDisplaySettings) {
 		super();
-		this.myScale = displayVars.scale;
+		this.myScale = dVars.scale;
 		this.visible = false;
 		this.entryMaxLength = dStngs.entryMaxLength;
-		this.bStyles = ['1px solid #bbbbbb', '1px solid #ffdd00'];
-		this.offsetX = 0;
-		this.offsetY = 0;
 
 		this.cleanInputs = this.cleanInputs.bind(this);
-
-		this.fieldTween1 = null;
-		this.fieldTween2 = null;
 
 		this.nDiv = document.createElement('input');
 		this.nDiv.id = 'inputName';
 		this.setInputStyle(this.nDiv, dStngs.fonts[2], dStngs.fontColors[5]);
-		document.getElementById('containerDiv').appendChild(this.nDiv);
+		document.getElementById('containerDiv')?.appendChild(this.nDiv);
 		this.lDiv = document.createElement('input');
 		this.lDiv.id = 'inputLocal';
 		this.setInputStyle(this.lDiv, dStngs.fonts[2], dStngs.fontColors[5]);
-		document.getElementById('containerDiv').appendChild(this.lDiv);
+		document.getElementById('containerDiv')?.appendChild(this.lDiv);
 
-		this.setupDisplay(displayVars, dStngs);
+		this.setupDisplay(dVars, dStngs);
 	}
 
-	setupDisplay(displayVars, dStngs) {
-		if (displayVars.orient === 0) {
+	setupDisplay(dVars:DisplayVars, dStngs:HSDisplaySettings) {
+		if (dVars.orient === 0) {
 			this.nameElemX = 0;
 			this.nameElemY = -22;
 			this.localElemX = 0;
@@ -52,16 +65,16 @@ class HighScoresEntryInputs extends PIXI.Container {
 		}
 	}
 
-	displayChange(displayVars, dStngs) {
-		this.setupDisplay(displayVars, dStngs);
+	displayChange(dVars:DisplayVars, dStngs:HSDisplaySettings) {
+		this.setupDisplay(dVars, dStngs);
 	}
 
-	updateInputs(displayVars) {
-		this.myScale = displayVars.scale;
+	updateInputs(dVars:DisplayVars) {
+		this.myScale = dVars.scale;
 		if (this.visible) this.updateInputElements();
 	}
 
-	setInputOffsets(entryPaneX, entryPaneY) {
+	setInputOffsets(entryPaneX:number, entryPaneY:number) {
 		this.offsetX = entryPaneX;
 		this.offsetY = entryPaneY;
 	}
@@ -84,8 +97,8 @@ class HighScoresEntryInputs extends PIXI.Container {
 		this.lDiv.style.padding = newPadding + 'px 0px';
 
 		let myCan = document.getElementById(CANVAS_ID);
-		let myX = myCan.offsetLeft;
-		let myY = myCan.offsetTop;
+		let myX = myCan?myCan.offsetLeft:0;
+		let myY = myCan?myCan.offsetTop:0;
 
 		let xPosName = Math.round(myX + (this.offsetX + this.nameElemX) * this.myScale - wid / 2);
 		let yPosName = Math.round(myY + (this.offsetY + this.nameElemY) * this.myScale - hei / 2);
@@ -98,15 +111,16 @@ class HighScoresEntryInputs extends PIXI.Container {
 		this.lDiv.style.top = yPosLocal + 'px';
 	}
 
-	showFields(fadeIn) {
+	showFields(fadeIn:boolean) {
 		this.visible = true;
 		this.updateInputElements();
-		document.querySelector('input').autofocus = true;
+		let myInput=document.querySelector('input');
+		if(myInput)myInput.autofocus = true;
 		this.nDiv.style.display = 'block';
 		this.lDiv.style.display = 'block';
 		if (fadeIn) {
-			this.lDiv.style.opacity = 0;
-			this.nDiv.style.opacity = 0;
+			this.lDiv.style.opacity = '0';
+			this.nDiv.style.opacity = '0';
 			this.fieldTween1 = gsap.to(this.lDiv, { delay: 0.3, duration: 0.4, opacity: 1 });
 			this.fieldTween2 = gsap.to(this.nDiv, { delay: 0.3, duration: 0.4, opacity: 1 });
 		}
@@ -128,8 +142,8 @@ class HighScoresEntryInputs extends PIXI.Container {
 		if (loc.length > max)loc = loc.slice(0, max);
 		loc = loc.replace(/[^a-zA-Z ]/g, '');
 		this.lDiv.value = loc;
-		if (nom.length > 0) this.nDiv.style.border = this.bStyles[0];
-		if (loc.length > 0) this.lDiv.style.border = this.bStyles[0];
+		if (nom.length > 0) this.nDiv.style.border = BORDER_STYLES[0];
+		if (loc.length > 0) this.lDiv.style.border = BORDER_STYLES[0];
 	}
 
 	getInputs() {
@@ -140,23 +154,23 @@ class HighScoresEntryInputs extends PIXI.Container {
 		loc = this.checkText(loc);
 		this.nDiv.value = nom;
 		this.lDiv.value = loc;
-		if (loc.length === 0) this.lDiv.style.border = this.bStyles[1];
-		if (nom.length === 0) this.nDiv.style.border = this.bStyles[1];
+		if (loc.length === 0) this.lDiv.style.border = BORDER_STYLES[1];
+		if (nom.length === 0) this.nDiv.style.border = BORDER_STYLES[1];
 		return { nom, loc };
 	}
 
-	setInputStyle(div, fnt, fntCol) {
+	setInputStyle(div:HTMLInputElement, fnt:string, fntCol:number) {
 		div.setAttribute('type', 'text');
-		div.setAttribute('maxlength', this.entryMaxLength);
+		div.setAttribute('maxlength', this.entryMaxLength.toString());
 		div.style.position = 'absolute';
-		div.style.left = 0;
-		div.style.top = 0;
+		div.style.left = '0';
+		div.style.top = '0';
 		div.style.display = 'none';
 		div.style.textAlign = 'center';
 		div.style.fontFamily = fnt;
-		div.style.color = fntCol;
+		div.style.color = fntCol.toString();
 		div.style.textDecoration = 'none';
-		div.style.border = this.bStyles[0];
+		div.style.border = BORDER_STYLES[0];
 		div.style.borderRadius = '0.5em';
 		div.style.outline = 'none';
 		div.style.margin = '0px';
@@ -164,7 +178,7 @@ class HighScoresEntryInputs extends PIXI.Container {
 		div.style.zIndex = '4';
 	}
 
-	checkText(leText) {
+	checkText(leText:string) {
 		let outText = leText.slice(0, this.entryMaxLength);
 		outText = outText.replace(/[^a-z]/gi, '');
 		outText = outText.toLowerCase();

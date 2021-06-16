@@ -1,8 +1,25 @@
 import PIXI from 'pixi.js';
 import HighScoresEntryInputs from './highscoresentryinputs';
+import {DisplayVars,HSDisplaySettings} from './highscorestypes';
 
 class HighScoresEntryPane extends PIXI.Container {
-	constructor(displayVars, dStngs) {
+	private back:PIXI.Graphics;
+	private backShade:PIXI.Graphics;
+	private cancelBut:PIXI.Container;
+	private cancelButBack:PIXI.Graphics;
+	private submitBut:PIXI.Container;
+	private submitButBack:PIXI.Graphics;
+	private enterBut:PIXI.Container;
+	private enterButBack:PIXI.Graphics;
+	private inputFields:HighScoresEntryInputs;
+	private enterText:PIXI.Text;
+	private nameLabel:PIXI.Text;
+	private localLabel:PIXI.Text;
+	private submitText:PIXI.Text;
+	private cancelText:PIXI.Text;
+	private orient:number=0;
+
+	constructor(dVars:DisplayVars, dStngs:HSDisplaySettings) {
 		super();
 		this.visible = false;
 
@@ -19,7 +36,7 @@ class HighScoresEntryPane extends PIXI.Container {
 		this.cancelButBack = new PIXI.Graphics();
 		this.enterBut = new PIXI.Container();
 		this.enterButBack = new PIXI.Graphics();
-		this.inputFields = new HighScoresEntryInputs(displayVars, dStngs);
+		this.inputFields = new HighScoresEntryInputs(dVars, dStngs);
 
 		this.enterText = new PIXI.Text('Enter', { fontFamily: dStngs.fonts[2], fill: dStngs.fontColors[4], fontWeight: 'bold' });
 		this.enterText.anchor.set(0.5);
@@ -44,12 +61,12 @@ class HighScoresEntryPane extends PIXI.Container {
 		this.addChild(this.enterBut, this.backShade, this.back, this.submitBut, this.cancelBut);
 		this.addChild(this.nameLabel, this.localLabel, this.inputFields);
 
-		this.setupDisplay(displayVars, dStngs);
+		this.setupDisplay(dVars, dStngs);
 	}
 
-	setupDisplay(displayVars, dStngs) {
-		this.orient = displayVars.orient;
-		if (displayVars.orient === 0) {
+	setupDisplay(dVars:DisplayVars, dStngs:HSDisplaySettings) {
+		this.orient = dVars.orient;
+		if (dVars.orient === 0) {
 			this.submitBut.position.set(0, 110);
 			this.nameLabel.position.set(0, -48);
 			this.localLabel.position.set(0, 18);
@@ -58,31 +75,31 @@ class HighScoresEntryPane extends PIXI.Container {
 			this.nameLabel.position.set(-0, -180);
 			this.localLabel.position.set(0, -65);
 			this.cancelBut.position.set(0, 165);
-			this.enterBut.position.set(115, 250);
+			this.enterBut.position.set(115, 107);
 		}
-		this.setupBack(displayVars, dStngs);
-		this.setupButs(displayVars, dStngs);
-		this.setupFonts(displayVars, dStngs);
+		this.setupBack(dVars, dStngs);
+		this.setupButs(dVars, dStngs);
+		this.setupFonts(dVars, dStngs);
 	}
 
-	displayChange(displayVars, dStngs) {
-		this.setupDisplay(displayVars, dStngs);
-		this.inputFields.displayChange(displayVars, dStngs);
+	displayChange(dVars:DisplayVars, dStngs:HSDisplaySettings) {
+		this.setupDisplay(dVars, dStngs);
+		this.inputFields.displayChange(dVars, dStngs);
 		if (this.visible) this.show();
 	}
 
-	updateInputs(displayVars) {
-		this.inputFields.updateInputs(displayVars);
+	updateInputs(dVars:DisplayVars) {
+		this.inputFields.updateInputs(dVars);
 	}
 
-	setInputOffsets(entryPaneX, entryPaneY) {
+	setInputOffsets(entryPaneX:number, entryPaneY:number) {
 		this.inputFields.setInputOffsets(entryPaneX, entryPaneY);
 	}
 
-	setupBack(displayVars, dStngs) {
-		let w = displayVars.orient === 0 ? 116 : 340;
-		let h = displayVars.orient === 0 ? 160 : 470;
-		let r = displayVars.orient === 0 ? 22 : 36;
+	setupBack(dVars:DisplayVars, dStngs:HSDisplaySettings) {
+		let w = dVars.orient === 0 ? 116 : 340;
+		let h = dVars.orient === 0 ? 160 : 470;
+		let r = dVars.orient === 0 ? 22 : 36;
 		this.back.clear();
 		if (dStngs.scoresPaneMargin > 0) {
 			this.back.beginFill(dStngs.backPaneColors[1]);
@@ -97,10 +114,10 @@ class HighScoresEntryPane extends PIXI.Container {
 		this.back.drawRoundedRect(-w / 2, -h / 2, w, h, r);
 	}
 
-	setupButs(displayVars, dStngs) {
-		let w = displayVars.orient === 0 ? 112 : 260;
-		let h = displayVars.orient === 0 ? 44 : 72;
-		let r = displayVars.orient === 0 ? 16 : 20;
+	setupButs(dVars:DisplayVars, dStngs:HSDisplaySettings) {
+		let w = dVars.orient === 0 ? 112 : 260;
+		let h = dVars.orient === 0 ? 44 : 72;
+		let r = dVars.orient === 0 ? 16 : 20;
 		this.submitButBack.clear();
 		this.submitButBack.beginFill(0xffff88);
 		if (dStngs.submitBorder > 0) this.submitButBack.lineStyle(1, 0xaaaaaa);
@@ -121,18 +138,18 @@ class HighScoresEntryPane extends PIXI.Container {
 		this.backShade.alpha = 0.6;
 	}
 
-	setupFonts(displayVars, dStngs) {
-		let fontSizes = displayVars.orient === 0 ? dStngs.fontSizes : dStngs.fontSizesPort;
+	setupFonts(dVars:DisplayVars, dStngs:HSDisplaySettings) {
+		let fontSizes = dVars.orient === 0 ? dStngs.fontSizes : dStngs.fontSizesPort;
 		this.enterText.style.fontSize = fontSizes[4];
 		this.nameLabel.style.fontSize = fontSizes[3];
 		this.localLabel.style.fontSize = fontSizes[3];
 		this.submitText.style.fontSize = fontSizes[4];
 		this.cancelText.style.fontSize = fontSizes[4];
-		this.enterText.resolution = displayVars.textRes;
-		this.nameLabel.resolution = displayVars.textRes;
-		this.localLabel.resolution = displayVars.textRes;
-		this.submitText.resolution = displayVars.textRes;
-		this.cancelText.resolution = displayVars.textRes;
+		this.enterText.resolution = dVars.textRes;
+		this.nameLabel.resolution = dVars.textRes;
+		this.localLabel.resolution = dVars.textRes;
+		this.submitText.resolution = dVars.textRes;
+		this.cancelText.resolution = dVars.textRes;
 	}
 
 	submitClick() {
@@ -189,7 +206,7 @@ class HighScoresEntryPane extends PIXI.Container {
 		this.inputFields.hideFields();
 	}
 
-	toggleEntryPane(showBool) {
+	toggleEntryPane(showBool:boolean) {
 		let myBool = showBool;
 		this.back.visible = myBool;
 		this.cancelBut.visible = myBool;
@@ -205,11 +222,10 @@ class HighScoresEntryPane extends PIXI.Container {
 	}
 
 	init() {
-		document.addEventListener('keyup', this.keyPress);
-		this.submitBut.on('pointerup', this.submitClick);
-		this.cancelBut.on('pointerup', this.cancelClick);
-		this.enterBut.on('pointerup', this.enterClick);
-		this.backShade.on('pointerup', this.cancelClick);
+		this.submitBut.on('pointertap', this.submitClick);
+		this.cancelBut.on('pointertap', this.cancelClick);
+		this.enterBut.on('pointertap', this.enterClick);
+		this.backShade.on('pointertap', this.cancelClick);
 
 		this.submitBut.interactive = true;
 		this.cancelBut.interactive = true;
@@ -220,10 +236,10 @@ class HighScoresEntryPane extends PIXI.Container {
 	}
 
 	deit() {
-		this.submitBut.off('pointerup');
-		this.cancelBut.off('pointerup');
-		this.enterBut.off('pointerup');
-		this.backShade.off('pointerup');
+		this.submitBut.off('pointertap');
+		this.cancelBut.off('pointertap');
+		this.enterBut.off('pointertap');
+		this.backShade.off('pointertap');
 
 		this.submitBut.interactive = false;
 		this.cancelBut.interactive = false;

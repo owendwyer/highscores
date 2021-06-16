@@ -1,0 +1,4 @@
+
+all the files were just copy pasted into the module ts file
+imports were tidied up
+all exports were removed - except for default highscores

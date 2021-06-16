@@ -6,13 +6,39 @@ import HighScoresArrows from './highscoresarrows';
 import HighScoresSeqArrows from './highscoresseqarrows';
 import HighScoresScoresPane from './highscoresscorespane';
 import HighScoresEntryPane from './highscoresentrypane';
+import {DisplayVars, HSSettings, HSDisplaySettings, HSObject} from './highscorestypes';
 
 const SEQ_LIM = 30;//bounds for set sequence timer
 const SEQ_START = 12;
 const SEQ_LOW = -10;
 
 class HighScoresView extends PIXI.Container {
-	constructor(displayVars, scores, settings, displaySettings) {
+	private orient:number;
+	private scores:HSObject;
+	private dSettings:HSDisplaySettings;
+	private active:boolean=false;
+	private scoresReceived:boolean=false;
+	private submitSent:boolean=false;
+	private displayInd:number=0;
+	private playerPositions:number[];
+	private displaySeq:number[]=[0];
+	private incDisplayInd:boolean=true;
+	private showEntryPaneFlag:boolean=false;
+	private myTimer:number|null=null;
+	private yOffs:number[]=[];
+	private timerCount:number=0;
+
+	private fadeInEntry:GSAPTween;
+	private fadeInScores:GSAPTween;
+
+	private highScoresTable:HighScoresTable;
+	private highScoresTableLines:HighScoresTableLines;
+	private highScoresScoresPane:HighScoresScoresPane;
+	private highScoresArrows:HighScoresArrows;
+	private highScoresSeqArrows:HighScoresSeqArrows;
+	private highScoresEntryPane:HighScoresEntryPane;
+
+	constructor(dVars:DisplayVars, scores:HSObject, settings:HSSettings, dSettings:HSDisplaySettings) {
 		super();
 		this.scrollUp = this.scrollUp.bind(this);
 		this.scrollDown = this.scrollDown.bind(this);
@@ -21,28 +47,18 @@ class HighScoresView extends PIXI.Container {
 		this.myCounter = this.myCounter.bind(this);
 		this.submitClick = this.submitClick.bind(this);
 
-		this.orient = displayVars.orient;
+		this.orient = dVars.orient;
 		this.scores = scores;
-		this.displaySettings = displaySettings;
-		this.active = false;
+		this.dSettings = dSettings;
 
-		this.playerPositions = [null, null, null, null, null];
+		this.playerPositions = [-1, -1, -1, -1, -1];
 
-		this.scoresReceived = false;
-		this.submitSent = false;
-		this.displayInd = 0;
-		this.displaySeq = [0];
-		this.incDisplayInd = true;
-		this.showEntryPaneFlag = false;
-		this.myTimer = null;
-		this.yOffs = [];
-
-		this.highScoresTable = new HighScoresTable(displayVars, displaySettings);
-		this.highScoresTableLines = new HighScoresTableLines(displayVars, displaySettings);
-		this.highScoresScoresPane = new HighScoresScoresPane(displayVars, displaySettings);
-		this.highScoresArrows = new HighScoresArrows(displayVars, displaySettings);
-		this.highScoresSeqArrows = new HighScoresSeqArrows(displaySettings);
-		this.highScoresEntryPane = new HighScoresEntryPane(displayVars, displaySettings);
+		this.highScoresTable = new HighScoresTable(dVars, dSettings);
+		this.highScoresTableLines = new HighScoresTableLines(dVars, settings, dSettings);
+		this.highScoresScoresPane = new HighScoresScoresPane(dVars, dSettings);
+		this.highScoresArrows = new HighScoresArrows(dVars, dSettings);
+		this.highScoresSeqArrows = new HighScoresSeqArrows(dSettings);
+		this.highScoresEntryPane = new HighScoresEntryPane(dVars, dSettings);
 
 		this.highScoresEntryPane.alpha = 0;
 		this.highScoresScoresPane.alpha = 0;
@@ -53,35 +69,37 @@ class HighScoresView extends PIXI.Container {
 		this.addChild(this.highScoresSeqArrows, this.highScoresScoresPane);
 		this.addChild(this.highScoresEntryPane);
 
-		this.setupDisplay(displayVars);
+		this.setupDisplay(dVars);
 	}
 
-	setupDisplay(displayVars) {
-		let xPos = displayVars.orient === 0 ? 400 : 275;
-		let yPos = displayVars.orient === 0 ? 228 : 304;
-		yPos += this.displaySettings.adjustYs[displayVars.orient];
+	setupDisplay(dVars:DisplayVars) {
+		let xPos = dVars.orient === 0 ? 400 : 275;
+		// let yPos = dVars.orient === 0 ? 228 : 304;
+		// let yPos = dVars.orient === 0 ? 190 : 304;
+		let yPos = dVars.orient === 0 ? 210 : 274;
+		yPos += this.dSettings.adjustYs[dVars.orient];
 		this.highScoresTable.position.set(xPos, yPos);
-		this.highScoresTableLines.position.set(xPos, yPos - 97);
-		this.highScoresSeqArrows.position.set(xPos, yPos - 178);
-		let entryPaneX = displayVars.orient === 0 ? 68 : 275;
-		let entryPaneY = displayVars.orient === 0 ? yPos + 25 : 400;
+		this.highScoresTableLines.position.set(xPos, yPos - 59);
+		this.highScoresSeqArrows.position.set(xPos, yPos - 140);
+		let entryPaneX = dVars.orient === 0 ? 68 : 275;
+		let entryPaneY = dVars.orient === 0 ? yPos + 25 : 400;
 		this.highScoresEntryPane.position.set(entryPaneX, entryPaneY);
 		this.highScoresEntryPane.setInputOffsets(entryPaneX, entryPaneY);
 		this.positionScoresPane();
 	}
 
-	displayChange(displayVars) {
-		this.orient = displayVars.orient;
-		this.setupDisplay(displayVars);
-		this.highScoresTable.setupDisplay(displayVars, this.displaySettings);
-		this.highScoresTableLines.setupDisplay(displayVars, this.displaySettings);
-		this.highScoresArrows.setupDisplay(displayVars, this.displaySettings);
-		this.highScoresScoresPane.setupDisplay(displayVars, this.displaySettings);
-		this.highScoresEntryPane.displayChange(displayVars, this.displaySettings);
+	displayChange(dVars:DisplayVars) {
+		this.orient = dVars.orient;
+		this.setupDisplay(dVars);
+		this.highScoresTable.setupDisplay(dVars, this.dSettings);
+		this.highScoresTableLines.setupDisplay(dVars, this.dSettings);
+		this.highScoresArrows.setupDisplay(dVars, this.dSettings);
+		this.highScoresScoresPane.setupDisplay(dVars, this.dSettings);
+		this.highScoresEntryPane.displayChange(dVars, this.dSettings);
 	}
 
-	updateInputs(displayVars) {
-		this.highScoresEntryPane.updateInputs(displayVars);
+	updateInputs(dVars:DisplayVars) {
+		this.highScoresEntryPane.updateInputs(dVars);
 	}
 
 	positionScoresPane() {
@@ -91,17 +109,18 @@ class HighScoresView extends PIXI.Container {
 			if (this.highScoresEntryPane.visible) this.highScoresScoresPane.y -= 105;
 		} else {
 			this.highScoresScoresPane.x = this.highScoresEntryPane.visible ? 163 : 275;
-			this.highScoresScoresPane.y = 650;
+			// this.highScoresScoresPane.y = 650;
+			this.highScoresScoresPane.y = 507;
 		}
 	}
 
-	setContentTitle(title) { this.highScoresTable.setContentTitle(title); }
+	setContentTitle(title:string) { this.highScoresTable.setContentTitle(title); }
 
-	setPlayerPosition(ind, pos) {	this.playerPositions[ind] = pos; }
+	setPlayerPosition(ind:number, pos:number) {	this.playerPositions[ind] = pos; }
 
-	getPlayerPosition(ind) { return this.playerPositions[ind]; }
+	getPlayerPosition(ind:number) { return this.playerPositions[ind]; }
 
-	setScoresPane(label, score) {
+	setScoresPane(label:string, score:number) {
 		this.highScoresScoresPane.setScores(label, score);
 	}
 
@@ -110,7 +129,7 @@ class HighScoresView extends PIXI.Container {
 		this.submitSent = false;
 	}
 
-	setDisplaySeq(displaySeq) {
+	setDisplaySeq(displaySeq:number[]) {
 		this.displaySeq = displaySeq;
 	}
 
@@ -126,7 +145,7 @@ class HighScoresView extends PIXI.Container {
 		}
 	}
 
-	updateSeq(add) {
+	updateSeq(add:number) {
 		this.storeYOff();
 		let tmp = -1;
 		if (this.incDisplayInd) {
@@ -139,11 +158,11 @@ class HighScoresView extends PIXI.Container {
 		if (this.displayInd !== tmp) this.showScores(add);
 	}
 
-	showScores(dir) {
+	showScores(dir:number) {
 		let curSet = this.displaySeq[this.displayInd];
 		this.highScoresTableLines.showScores(this.scores[curSet], dir, curSet);
 		let pPos = this.playerPositions[this.displaySeq[this.displayInd]];
-		if (pPos !== null) { //always return y position to place where player score shows
+		if (pPos !== -1) { //always return y position to place where player score shows
 			this.highScoresTableLines.showPlayerHighlight(pPos);
 		} else {
 			this.highScoresTableLines.showLastYPosition(this.yOffs[this.displayInd]);
@@ -166,7 +185,7 @@ class HighScoresView extends PIXI.Container {
 		this.fadeInScores.restart(true, false);
 	}
 
-	submitClick(nom, loc) {
+	submitClick(nom:string, loc:string) {
 		this.submitSent = true;
 		this.positionScoresPane();
 		this.fadeInScores.restart(true, false);
@@ -214,7 +233,7 @@ class HighScoresView extends PIXI.Container {
 			this.timerCount = 0;
 			this.updateSeq(1);
 		}
-		this.myTimer = setTimeout(this.myCounter, 200);
+		this.myTimer = window.setTimeout(this.myCounter, 200);
 	}
 
 	resetCounter() {

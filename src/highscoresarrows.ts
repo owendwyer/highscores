@@ -1,10 +1,18 @@
 import PIXI from 'pixi.js';
 import { makeArrow, makeRect } from './highscoresutils';
+import { DisplayVars,HSDisplaySettings} from './highscorestypes';
 
-const INTERVAL_TIME = 20;
 
 class HighScoresArrows extends PIXI.Container {
-	constructor(displayVars, displaySettings) {
+	private INTERVAL_TIME = 20;
+	private myUpBut:PIXI.Container;
+	private myDownBut:PIXI.Container;
+	private upRect:PIXI.Graphics;
+	private downRect:PIXI.Graphics;
+	private myInterval:number|null=null;
+	private delta:number=0;
+
+	constructor(dVars:DisplayVars, displaySettings:HSDisplaySettings) {
 		super();
 
 		this.stopUp = this.stopUp.bind(this);
@@ -17,12 +25,10 @@ class HighScoresArrows extends PIXI.Container {
 		this.myUpBut = new PIXI.Container();
 		this.myDownBut = new PIXI.Container();
 
-		this.myInterval = null;
-
 		let myUpArrow = new PIXI.Graphics();
 		let myDownArrow = new PIXI.Graphics();
-		makeArrow(myUpArrow, 32, displaySettings.arrowColor, displaySettings.arrowColor);
-		makeArrow(myDownArrow, 32, displaySettings.arrowColor, displaySettings.arrowColor);
+		makeArrow(myUpArrow, 32, displaySettings.arrowStroke, displaySettings.arrowColor);
+		makeArrow(myDownArrow, 32, displaySettings.arrowStroke, displaySettings.arrowColor);
 		myUpArrow.rotation = -1.57;
 		myDownArrow.rotation = 1.57;
 
@@ -37,19 +43,21 @@ class HighScoresArrows extends PIXI.Container {
 		this.myDownBut.addChild(myDownArrow, this.downRect);
 
 		this.addChild(this.myUpBut, this.myDownBut);
-		this.setupDisplay(displayVars, displaySettings);
+		this.setupDisplay(dVars, displaySettings);
 	}
 
-	setupDisplay(displayVars, displaySettings) {
-		let yAdj = displayVars.orient === 0 ? displaySettings.adjustYs[0] : displaySettings.adjustYs[1];
-		if (displayVars.orient === 0) {
+	setupDisplay(dVars:DisplayVars, displaySettings:HSDisplaySettings) {
+		let yAdj = dVars.orient === 0 ? displaySettings.adjustYs[0] : displaySettings.adjustYs[1];
+		if (dVars.orient === 0) {
 			this.myUpBut.position.set(735, 180 + yAdj);
 			this.myDownBut.position.set(735, 290 + yAdj);
 			this.upRect.visible = false;
 			this.downRect.visible = false;
 		} else {
-			this.myUpBut.position.set(275, 30 + yAdj);
-			this.myDownBut.position.set(275, 578 + yAdj);
+			// this.myUpBut.position.set(275, 30 + yAdj);
+			// this.myDownBut.position.set(275, 578 + yAdj);
+			this.myUpBut.position.set(220, 35 + yAdj);
+			this.myDownBut.position.set(330, 60 + yAdj);
 			this.upRect.visible = true;
 			this.downRect.visible = true;
 		}
@@ -58,7 +66,7 @@ class HighScoresArrows extends PIXI.Container {
 	startUp() {
 		this.delta = 0;
 		this.removeInterval();
-		this.myInterval = setInterval(this.scrollUp, INTERVAL_TIME);
+		this.myInterval = window.setInterval(this.scrollUp, this.INTERVAL_TIME);
 		this.myUpBut.on('mouseout', this.stopUp);
 	}
 
@@ -80,7 +88,7 @@ class HighScoresArrows extends PIXI.Container {
 	startDown() {
 		this.delta = 0;
 		this.removeInterval();
-		this.myInterval = setInterval(this.scrollDown, INTERVAL_TIME);
+		this.myInterval = window.setInterval(this.scrollDown, this.INTERVAL_TIME);
 		this.myDownBut.on('mouseout', this.stopDown);
 	}
 

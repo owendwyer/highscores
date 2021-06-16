@@ -1,8 +1,12 @@
 import PIXI from 'pixi.js';
 import { capitalizeFirst } from './highscoresutils';
+import {DisplayVars,HSDisplaySettings} from './highscorestypes';
 
 class HighScoresScoresPane extends PIXI.Container {
-	constructor(displayVars, dSettings) {
+	private back:PIXI.Graphics;
+	private scoreDisp:PIXI.Text;
+	private scoreLabel:PIXI.Text;
+	constructor(dVars:DisplayVars, dSettings:HSDisplaySettings) {
 		super();
 		this.back = new PIXI.Graphics();
 		this.back.alpha = dSettings.scoresPaneAlpha;
@@ -21,14 +25,14 @@ class HighScoresScoresPane extends PIXI.Container {
 		this.scoreLabel.anchor.set(0.5);
 		this.scoreDisp.anchor.set(0.5);
 		this.addChild(this.back, this.scoreLabel, this.scoreDisp);
-		this.setupDisplay(displayVars, dSettings);
+		this.setupDisplay(dVars, dSettings);
 	}
 
-	setupDisplay(displayVars, dSettings) {
+	setupDisplay(dVars:DisplayVars, dSettings:HSDisplaySettings) {
 		this.back.clear();
 		let backWidth = 116;
 		let backHeight = 80;
-		if (displayVars.orient === 0) {
+		if (dVars.orient === 0) {
 			this.scoreLabel.position.set(0, -10);
 			this.scoreDisp.position.set(0, 15);
 			this.scoreLabel.style.fontSize = dSettings.fontSizes[3];
@@ -56,13 +60,13 @@ class HighScoresScoresPane extends PIXI.Container {
 		this.back.lineStyle(1, dSettings.backPaneColors[2]);
 		this.back.drawRoundedRect(-w / 2, -h / 2, w, h, r);
 
-		this.scoreLabel.resolution = displayVars.textRes;
-		this.scoreDisp.resolution = displayVars.textRes;
+		this.scoreLabel.resolution = dVars.textRes;
+		this.scoreDisp.resolution = dVars.textRes;
 	}
 
-	setScores(label, score) {
+	setScores(label:string, score:number) {
 		this.scoreLabel.text = capitalizeFirst(label);
-		this.scoreDisp.text = score;
+		this.scoreDisp.text = score.toString();
 	}
 }
 
